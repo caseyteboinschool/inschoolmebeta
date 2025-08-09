@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Student Login - InSchool.me</title>
+  <title>Student Login/Signup - InSchool.me</title>
   <style>
     body, html {
       margin: 0; padding: 0; height: 100%;
@@ -15,7 +15,7 @@
       align-items: center;
       height: 100vh;
     }
-    #login-container {
+    #container {
       background: white;
       padding: 2rem;
       border-radius: 8px;
@@ -59,18 +59,28 @@
       color: #b71c1c;
       font-weight: 600;
     }
+    #toggleBtn {
+      margin-top: 1rem;
+      background: none;
+      border: none;
+      color: #3b82f6;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <div id="login-container">
-    <h2>Student Login</h2>
+  <div id="container">
+    <h2 id="formTitle">Student Login</h2>
     <label for="email">Email</label>
     <input id="email" type="email" placeholder="Your email" autocomplete="email" required />
 
     <label for="password">Password</label>
     <input id="password" type="password" placeholder="Password" autocomplete="current-password" required />
 
-    <button id="loginBtn">Log In</button>
+    <button id="submitBtn">Log In</button>
+    <button id="toggleBtn">Need to create an account? Sign up</button>
     <p id="msg" aria-live="polite"></p>
   </div>
 
@@ -78,48 +88,4 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import {
       getAuth,
-      signInWithEmailAndPassword,
-      onAuthStateChanged,
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
-      authDomain: "inschoolme-beta.firebaseapp.com",
-      projectId: "inschoolme-beta",
-      storageBucket: "inschoolme-beta.firebasestorage.app",
-      messagingSenderId: "806780250780",
-      appId: "1:806780250780:web:595e81b83c1877d7741b59",
-      measurementId: "G-Y9RGFDV68H",
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    const $ = (id) => document.getElementById(id);
-    const setMsg = (t) => { $("msg").textContent = t || ""; };
-    const setBusy = (busy) => {
-      $("loginBtn").disabled = busy;
-    };
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // Redirect to main chat page or wherever you want logged-in students to go
-        window.location.href = "index.html";
-      }
-    });
-
-    $("loginBtn").addEventListener("click", async () => {
-      setBusy(true);
-      setMsg("Logging in…");
-      try {
-        const email = $("email").value.trim();
-        const pwd = $("password").value;
-        await signInWithEmailAndPassword(auth, email, pwd);
-      } catch (e) {
-        setMsg(e.message);
-        setBusy(false);
-      }
-    });
-  </script>
-</body>
-</html>
+      signInWithEmailAndPassw
