@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>InSchool.me Chat</title>
+  <style>
+    /* Reset & basics */
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f5f8fa;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      max-width: 100vw;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    h1 { color: #3b82f6; margin-bottom: 0.2rem; }
+    #auth-forms, #private-area { width: 100%; max-width: 450px; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 0 8px #ccc; }
+    label { display: block; margin: 0.5rem 0 0.2rem; font-weight: bold; }
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:disabled {
+      background-color: #a5b4fc;
+      cursor: not-allowed;
+    }
+    #msg, #sendStatus {
+      min-height: 1.2em;
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #b71c1c;
+      text-align: center;
+    }
+    #sendStatus.error { color: red; }
+    #private-area {
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+    }
+    #welcome { font-weight: bold; margin-bottom: 1rem; text-align: center; }
+    #chatRoomsList {
+      max-height: 100px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+    #chatRoomsList button {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.3rem;
+      background: #e0e7ff;
+      border: none;
+      border-radius: 4px;
+      text-align: left;
+      cursor: pointer;
+    }
+    #chatContainer {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+    #chatMessages {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      font-size: 1rem;
+      line-height: 1.3;
+    }
+    .message {
+      max-width: 70%;
+      margin-bottom: 0.5rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 15px;
+      word-wrap: break-word;
+      clear: both;
+    }
+    .message.self {
+      background-color: #3b82f6;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 3px;
+    }
+    .message.other {
+      background-color: #d1d5db;
+      color: black;
+      margin-right: auto;
+      border-bottom-left-radius: 3px;
+    }
+    #inputContainer {
+      display: flex;
+      padding: 0.5rem;
+      border-top: 1px solid #ccc;
+      background: white;
+    }
+    #messageInput {
+      flex-grow: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      outline: none;
+      margin-right: 0.5rem;
+      box-sizing: border-box;
+    }
+    #sendBtn {
+      width: 70px;
+      border-radius: 20px;
+    }
+    @media (max-width: 400px) {
+      #sendBtn {
+        width: 60px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1><img src="logo.png" width="257" height="65" alt=""/></h1>
+
+  <div id="auth">
+    <div id="auth-forms">
+      <label for="parentName">Parent Name</label>
+      <input id="parentName" type="text" placeholder="Your name" autocomplete="name" />
+
+      <label for="parentEmail">Parent Email</label>
+      <input id="parentEmail" type="email" placeholder="Your email" autocomplete="email" />
+
+      <label for="parentPassword">Password</label>
+      <input id="parentPassword" type="password" placeholder="Password" autocomplete="new-password" />
+
+      <label for="childName">Child Name</label>
+      <input id="childName" type="text" placeholder="Child's name" autocomplete="name" />
+
+      <label for="childEmail">Child Email</label>
+      <input id="childEmail" type="email" placeholder="Child's email" autocomplete="email" />
+
+      <button id="signupBtn">Sign Up</button>
+      <p id="msg" aria-live="polite"></p>
+    </div>
+</div>
+
+<div id="authed" hidden>
+  <div id="private-area">
+      <div id="welcome"></div>
+      <button id="logoutBtn">Log Out</button>
+
+      <h3>Your Chats</h3>
+      <div id="chatRoomsList"><p>Loading chat rooms...</p></div>
+
+      <div id="chatContainer" hidden>
+        <div id="chatMessages"></div>
+        <div id="inputContainer">
+          <input id="messageInput" type="text" placeholder="Type a message" autocomplete="off" />
+          <button id="sendBtn" disabled>Send</button>
+        </div>
+        <p id="sendStatus" aria-live="polite"></p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      collection,
+      query,
+      where,
+      onSnapshot,
+      orderBy,
+      addDoc,
+      serverTimestamp,
+      getDocs,
+      getDoc,
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
+      authDomain: "inschoolme-beta.firebaseapp.com",
+      projectId: "inschoolme-beta",
+      storageBucket: "inschoolme-beta.firebasestorage.app",
+      messagingSenderId: "806780250780",
+      appId: "1:806780250780:web:595e81b83c1877d7741b59",
+      measurementId: "G-Y9RGFDV68H",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+    const setMsg = (msg) => {
+      $("msg").textContent = msg || "";
+    };
+    const setBusy = (busy) => {
+      ["signupBtn", "logoutBtn", "sendBtn"].forEach((id) => {
+        const el = $(id);
+        if (el) el.disabled = busy;
+      });
+    };
+
+    let currentChatRoomId = null;
+    let unsubscribeMessages = null;
+
+    // Parent signup flow
+    $("signupBtn").addEventListener("click", async () => {
+      setBusy(true);
+      setMsg("Signing up…");
+
+      const parentName = $("parentName").value.trim();
+      const parentEmail = $("parentEmail").value.trim();
+      const parentPassword = $("parentPassword").value;
+      const childName = $("childName").value.trim();
+      const childEmail = $("childEmail").value.trim();
+
+      if (!parentName || !parentEmail || !parentPassword || !childName || !childEmail) {
+        setMsg("Please fill in all fields.");
+        setBusy(false);
+        return;
+      }
+
+      try {
+        // Create parent user auth account
+        const userCredential = await createUserWithEmailAndPassword(auth, parentEmail, parentPassword);
+        const parentUid = userCredential.user.uid;
+
+        // Create parent user profile
+        await setDoc(doc(db, "users", parentUid), {
+          name: parentName,
+          email: parentEmail,
+          role: "parent",
+          createdAt: serverTimestamp(),
+        });
+
+        // Check if child user exists
+        const childUsersQuery = query(collection(db, "users"), where("email", "==", childEmail));
+        const childUsersSnapshot = await getDocs(childUsersQuery);
+
+        let childUid;
+        if (childUsersSnapshot.empty) {
+          // Child user does not exist, create placeholder
+          const childRef = doc(collection(db, "users"));
+          childUid = childRef.id;
+          await setDoc(childRef, {
+            name: childName,
+            email: childEmail,
+            role: "student",
+            placeholder: true,
+            createdAt: serverTimestamp(),
+          });
+        } else {
+          // Child user exists
+          const childDoc = childUsersSnapshot.docs[0];
+          childUid = childDoc.id;
+        }
+
+        // Create chat room between parent and child (if not exists)
+        const chatRoomsRef = collection(db, "chatRooms");
+        const chatRoomQuery = query(
+          chatRoomsRef,
+          where("participants", "array-contains", parentUid)
+        );
+        const chatRoomsSnapshot = await getDocs(chatRoomQuery);
+
+        let chatRoomId = null;
+        // Check if chat room with both participants exists
+        for (const docSnap of chatRoomsSnapshot.docs) {
+          const data = docSnap.data();
+          if (
+            data.participants.includes(childUid) &&
+            data.participants.includes(parentUid)
+          ) {
+            chatRoomId = docSnap.id;
+            break;
+          }
+        }
+
+        if (!chatRoomId) {
+          // Create new chat room doc
+          const newChatRoomRef = doc(chatRoomsRef);
+          chatRoomId = newChatRoomRef.id;
+          await setDoc(newChatRoomRef, {
+            participants: [parentUid, childUid],
+            createdAt: serverTimestamp(),
+          });
+        }
+
+        setMsg("Account created! You can now chat.");
+      } catch (e) {
+        setMsg(e.message);
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    // Auth state handling
+    onAuthStateChanged(auth, async (user) => {
+      const authed = !!user;
+      $("auth-forms").hidden = authed;
+      $("authed").hidden = !authed;
+      setMsg("");
+      setBusy(false);
+
+      if (authed) {
+        $("welcome").textContent = `Welcome, ${user.email}`;
+        loadUserChatRooms(user.uid);
+      } else {
+        clearChatUI();
+      }
+    });
+
+    // Load chat rooms for user
+    function loadUserChatRooms(uid) {
+      const chatRoomsRef = collection(db, "chatRooms");
+      const q = query(chatRoomsRef, where("participants", "array-contains", uid));
+
+      onSnapshot(
+        q,
+        (snapshot) => {
+          const rooms = [];
+          snapshot.forEach((doc) => {
+            rooms.push({ id: doc.id, ...doc.data() });
+          });
+          displayChatRooms(rooms);
+        },
+        (error) => {
+          console.error("Error loading chat rooms:", error);
+          $("chatRoomsList").innerHTML = "<p style='color:red'>Error loading chat rooms.</p>";
+        }
+      );
+    }
+
+    // Display chat rooms
+    function displayChatRooms(rooms) {
+      const container = $("chatRoomsList");
+      container.innerHTML = "";
+      if (rooms.length === 0) {
+        container.innerHTML = "<p>You have no chat rooms yet.</p>";
+        return;
+      }
+      rooms.forEach((room) => {
+        const btn = document.createElement("button");
+        btn.textContent = `Chat Room: ${room.id}`;
+        btn.onclick = () => openChatRoom(room.id);
+        container.appendChild(btn);
+      });
+    }
+
+    // Open chat room and listen for messages
+    async function openChatRoom(chatRoomId) {
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+      }
+      currentChatRoomId = chatRoomId;
+      $("chatContainer").hidden = false;
+      $("chatMessages").innerHTML = "<p>Loading messages...</p>";
+      $("sendStatus").textContent = "";
+      $("sendBtn").disabled = false;
+
+      const messagesRef = collection(db, "chatRooms", chatRoomId, "messages");
+      const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
+
+      unsubscribeMessages = onSnapshot(
+        messagesQuery,
+        (snapshot) => {
+          if (snapshot.empty) {
+            $("chatMessages").innerHTML = "<p>No messages yet.</p>";
+            return;
+          }
+          $("chatMessages").innerHTML = "";
+          snapshot.forEach((doc) => {
+            const msg = doc.data();
+            const isSelf = auth.currentUser.uid === msg.senderId;
+            const div = document.createElement("div");
+            div.textContent = msg.text;
+            div.className = "message " + (isSelf ? "self" : "other");
+            $("chatMessages").appendChild(div);
+          });
+          // Scroll to bottom
+          $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
+        },
+        (error) => {
+          console.error("Error loading messages:", error);
+          $("chatMessages").innerHTML = "<p style='color:red'>Error loading messages.</p>";
+        }
+      );
+    }
+
+    // Clear chat UI on logout
+    function clearChatUI() {
+      $("chatRoomsList").innerHTML = "";
+      $("chatContainer").hidden = true;
+      $("chatMessages").innerHTML = "";
+      currentChatRoomId = null;
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+        unsubscribeMessages = null;
+      }
+    }
+
+    // Send new message
+    $("sendBtn").addEventListener("click", async () => {
+      const text = $("messageInput").value.trim();
+      if (!text) {
+        $("sendStatus").textContent = "Please type a message first.";
+        $("sendStatus").classList.add("error");
+        return;
+      }
+      if (!currentChatRoomId) {
+        $("sendStatus").textContent = "No chat room selected.";
+        $("sendStatus").classList.add("error");
+        return;
+      }
+      setBusy(true);
+      $("sendStatus").textContent = "Sending…";
+      $("sendStatus").classList.remove("error");
+      try {
+        await addDoc(collection(db, "chatRooms", currentChatRoomId, "messages"), {
+          text,
+          senderId: auth.currentUser.uid,
+          timestamp: serverTimestamp(),
+        });
+        $("sendStatus").textContent = "✅ Message sent!";
+        $("messageInput").value = "";
+      } catch (e) {
+        $("sendStatus").textContent = "❌ " + e.message;
+        $("sendStatus").classList.add("error");
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    // Logout handler
+    $("logoutBtn").addEventListener("click", async () => {
+      setBusy(true);
+      try {
+        await signOut(auth);
+      } finally {
+        setBusy(false);
+      }
+    });
+  </script>
+</body>
+</html>
