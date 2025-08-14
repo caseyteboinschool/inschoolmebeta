@@ -141,8 +141,17 @@
         const userCredential = await createUserWithEmailAndPassword(auth, parentEmail, parentPassword);
         const parentUid = userCredential.user.uid;
 
-        // ✅ Generate a 6-character uppercase room code
-        const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        // ✅ SAFE: Generate a consistent 6-character uppercase alphanumeric room code
+        const generateRoomCode = () => {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          let code = '';
+          for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return code;
+        };
+
+        const roomCode = generateRoomCode();
 
         await setDoc(doc(db, "users", parentUid), {
           name: parentName,
