@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>InSchool.me Student Signup</title>
+  <title>Student Signup - InSchool.me</title>
   <style>
     body, html {
       margin: 0; padding: 0; height: 100%;
@@ -12,19 +12,23 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      max-width: 100vw;
       box-sizing: border-box;
       padding: 10px;
     }
-    #auth-forms { 
-      width: 100%; 
-      max-width: 450px; 
-      background: white; 
-      padding: 1rem; 
-      border-radius: 8px; 
-      box-shadow: 0 0 8px #ccc; 
+    #signup-container {
+      width: 100%;
+      max-width: 450px;
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #ccc;
+      margin-top: 1rem;
     }
-    label { display: block; margin: 0.5rem 0 0.2rem; font-weight: bold; }
+    label {
+      display: block;
+      margin: 0.5rem 0 0.2rem;
+      font-weight: bold;
+    }
     input[type="text"], input[type="email"], input[type="password"] {
       width: 100%;
       padding: 0.5rem;
@@ -44,54 +48,39 @@
       cursor: pointer;
       width: 100%;
     }
-    button:disabled {
-      background-color: #a5b4fc;
-      cursor: not-allowed;
+    #msg {
+      min-height: 1.2em;
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #b71c1c;
+      text-align: center;
     }
-    #msg { min-height: 1.2em; margin-top: 0.5rem; font-weight: 600; color: #b71c1c; text-align: center; }
-    .terms-container { margin-top: 1rem; font-size: 0.9rem; line-height: 1.4; }
-    .auth-switch { margin-top: 0.75rem; text-align: center; font-size: 0.95rem; }
-    .auth-switch a { color: #3b82f6; text-decoration: none; }
-    .auth-switch a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <img src="student-top-logo.png" alt="Student Dashboard Logo" width="316" height="80" id="topLogo" />
+  <img src="student-top-logo.png" alt="InSchool Logo" width="362" height="92" />
 
-  <div id="auth">
-    <div id="auth-forms">
-      <label for="studentName">Student Name</label>
-      <input id="studentName" type="text" placeholder="Your name" autocomplete="name" />
+  <div id="signup-container">
+    <h2>Student Signup</h2>
+    <p id="invitationMsg">Validating your invite...</p>
 
-      <label for="studentEmail">Student Email</label>
-      <input id="studentEmail" type="email" placeholder="Your email" autocomplete="email" />
+    <label for="studentName">Your Name</label>
+    <input id="studentName" type="text" placeholder="Your full name" autocomplete="name" />
 
-      <label for="studentPassword">Password</label>
-      <input id="studentPassword" type="password" placeholder="Password" autocomplete="new-password" />
+    <label for="studentEmail">Email</label>
+    <input id="studentEmail" type="email" placeholder="Your email" autocomplete="email" />
 
-      <div class="terms-container">
-        <label>
-          <input type="checkbox" id="termsCheckbox">
-          I agree to the 
-          <a href="/terms.html" target="_blank">Terms of Service</a> and 
-          <a href="/privacy.html" target="_blank">Privacy Policy</a>
-        </label>
-      </div>
+    <label for="studentPassword">Password</label>
+    <input id="studentPassword" type="password" placeholder="Password" autocomplete="new-password" />
 
-      <div class="auth-switch">
-        Already have an account?
-        <a href="student_login.html">Log in here</a>
-      </div>
-
-      <button id="signupBtn" disabled>Sign Up</button>
-      <p id="msg" aria-live="polite"></p>
-    </div>
-  </div>
+    <button id="signupBtn">Sign Up</button>
+    <p id="msg" aria-live="polite"></p>
+</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
@@ -100,7 +89,7 @@
       storageBucket: "inschoolme-beta.firebasestorage.app",
       messagingSenderId: "806780250780",
       appId: "1:806780250780:web:595e81b83c1877d7741b59",
-      measurementId: "G-Y9RGFDV68H",
+      measurementId: "G-Y9RGFDV68H"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -114,78 +103,66 @@
       el.style.color = isError ? "#b71c1c" : "green";
     };
 
-    $("termsCheckbox").addEventListener("change", function() {
-      $("signupBtn").disabled = !this.checked;
-    });
-
     const urlParams = new URLSearchParams(window.location.search);
-    const inviteToken = urlParams.get('invite');
+    const inviteCode = urlParams.get("invite");
+    let roomCode = null;
 
-    $("signupBtn").addEventListener("click", async () => {
-      if (!$("termsCheckbox").checked) {
-        setMsg("Please agree to the Terms and Privacy Policy before signing up.");
-        return;
-      }
-
-      setMsg("Signing up...", false);
-      $("signupBtn").disabled = true;
-
-      const studentName = $("studentName").value.trim();
-      const studentEmail = $("studentEmail").value.trim();
-      const studentPassword = $("studentPassword").value;
-
-      if (!studentName || !studentEmail || !studentPassword) {
-        setMsg("Please fill in all required fields.");
-        $("signupBtn").disabled = false;
+    async function validateInvite() {
+      if (!inviteCode) {
+        $("invitationMsg").textContent = "Missing invite code.";
+        $("signupBtn").disabled = true;
         return;
       }
 
       try {
-        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
-        const studentUid = userCredential.user.uid;
-
-        await setDoc(doc(db, "users", studentUid), {
-          name: studentName,
-          email: studentEmail,
-          createdAt: serverTimestamp(),
-          role: 'student'
-        });
-
-        if (inviteToken) {
-          const inviteRef = doc(db, "invites", inviteToken);
-          const inviteDoc = await getDoc(inviteRef);
-
-          if (inviteDoc.exists()) {
-            const inviteData = inviteDoc.data();
-            if (inviteData.status === 'pending' && inviteData.invitedEmail === studentEmail) {
-              const chatRoomRef = doc(db, "chatRooms", inviteData.roomCode);
-              await updateDoc(chatRoomRef, {
-                members: arrayUnion(studentUid)
-              });
-
-              await updateDoc(inviteRef, { status: 'accepted' });
-
-              setMsg("Sign up successful and joined chat room! Verify your email.", false);
-            } else {
-              setMsg("Invalid or expired invite.");
-            }
-          } else {
-            setMsg("No valid invite found.");
-          }
+        const inviteSnap = await getDoc(doc(db, "invites", inviteCode));
+        if (!inviteSnap.exists()) {
+          $("invitationMsg").textContent = "Invalid or expired invite link.";
+          $("signupBtn").disabled = true;
         } else {
-          setMsg("Sign up successful! Verify your email.", false);
+          const invite = inviteSnap.data();
+          roomCode = invite.roomCode;
+          $("invitationMsg").textContent = `You're joining a chat started by someone who cares about you.`;
         }
+      } catch (err) {
+        setMsg("Error validating invite.");
+        $("signupBtn").disabled = true;
+      }
+    }
 
-        await sendEmailVerification(userCredential.user, {
-          url: 'https://app.inschool.me/student_dashboard.html'
+    validateInvite();
+
+    $("signupBtn").addEventListener("click", async () => {
+      const name = $("studentName").value.trim();
+      const email = $("studentEmail").value.trim();
+      const password = $("studentPassword").value;
+
+      if (!name || !email || !password) {
+        setMsg("All fields are required.");
+        return;
+      }
+
+      setMsg("Signing you up...", false);
+      $("signupBtn").disabled = true;
+
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = userCred.user.uid;
+
+        await setDoc(doc(db, "users", uid), {
+          name,
+          email,
+          role: "student",
+          createdAt: serverTimestamp()
         });
 
-        setTimeout(() => {
-          window.location.href = "student_dashboard.html";
-        }, 1500);
+        await updateDoc(doc(db, "chatRooms", roomCode), {
+          members: arrayUnion(uid)
+        });
 
-      } catch (error) {
-        setMsg(`Error: ${error.message}`);
+        window.location.href = `student_dashboard.html?roomCode=${roomCode}`;
+      } catch (err) {
+        setMsg(`Error: ${err.message}`);
         $("signupBtn").disabled = false;
       }
     });

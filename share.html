@@ -151,7 +151,7 @@
             createdAt: serverTimestamp()
           });
 
-          const invitePage = recipient.role === 'student' ? 'student_login.html' : 'parent_signup.html';
+          const invitePage = recipient.role === 'student' ? 'student_signup.html' : 'parent_signup.html';
           const inviteLink = `https://app.inschool.me/${invitePage}?invite=${inviteToken}`;
 
           const res = await fetch("/.netlify/functions/send-email", {
