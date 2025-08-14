@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Share InSchool.me</title>
+  <style>
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f5f8fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 100vw;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    #share-container { 
+      width: 100%; 
+      max-width: 450px; 
+      background: white; 
+      padding: 1rem; 
+      border-radius: 8px; 
+      box-shadow: 0 0 8px #ccc; 
+      margin-top: 1rem;
+    }
+    label { 
+      display: block; 
+      margin: 0.5rem 0 0.2rem; 
+      font-weight: bold; 
+    }
+    input[type="email"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    #msg {
+      min-height: 1.2em;
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #b71c1c;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <img src="parent-top-logo.png" alt="Parent Dashboard Logo" width="316" height="80" id="topLogo" />
+
+  <div id="share-container">
+    <h2>You're Almost Ready!</h2>
+    <p>Enter the email addresses of your children or relatives you’d like to share this chat with!</p>
+
+    <label for="studentEmail">Student Email</label>
+    <input id="studentEmail" type="email" placeholder="Student's email" autocomplete="email" />
+
+    <label for="spouseEmail">Spouse Email (optional)</label>
+    <input id="spouseEmail" type="email" placeholder="Spouse's email" autocomplete="email" />
+
+    <button id="shareBtn">Share</button>
+    <p id="msg" aria-live="polite"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
+      authDomain: "inschoolme-beta.firebaseapp.com",
+      projectId: "inschoolme-beta",
+      storageBucket: "inschoolme-beta.firebasestorage.app",
+      messagingSenderId: "806780250780",
+      appId: "1:806780250780:web:595e81b83c1877d7741b59",
+      measurementId: "G-Y9RGFDV68H",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+    const setMsg = (msg, isError = true) => {
+      const el = $("msg");
+      el.textContent = msg || "";
+      el.style.color = isError ? "#b71c1c" : "green";
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get('roomCode');
+    if (!roomCode) {
+      setMsg("Invalid access. Please sign up first.");
+      $("shareBtn").disabled = true;
+    }
+
+    const parentName = localStorage.getItem("parentName") || "A parent";
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setMsg("You need to be logged in to share invites. Redirecting to login...");
+        setTimeout(() => {
+          window.location.href = "parent_login.html";
+        }, 2000);
+      }
+    });
+
+    $("shareBtn").addEventListener("click", async () => {
+      if (!auth.currentUser) {
+        setMsg("Please log in first.");
+        return;
+      }
+
+      const studentEmail = $("studentEmail").value.trim();
+      const spouseEmail = $("spouseEmail").value.trim();
+
+      if (!studentEmail) {
+        setMsg("Please enter at least a student email.");
+        return;
+      }
+
+      setMsg("Sending invites...", false);
+      $("shareBtn").disabled = true;
+
+      const recipients = [];
+      if (studentEmail) recipients.push({ email: studentEmail, role: 'student' });
+      if (spouseEmail) recipients.push({ email: spouseEmail, role: 'parent' });
+
+      try {
+        for (const recipient of recipients) {
+          const inviteToken = crypto.randomUUID().slice(0, 8);
+
+          await setDoc(doc(db, "invites", inviteToken), {
+            roomCode,
+            invitedEmail: recipient.email,
+            status: 'pending',
+            createdAt: serverTimestamp()
+          });
+
+          const signupPage = recipient.role === 'student' ? 'student_signup.html' : 'parent_signup.html';
+
+          const inviteLink = `https://app.inschool.me/${signupPage}?invite=${inviteToken}`;
+
+          const res = await fetch("/.netlify/functions/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: [recipient.email],
+              subject: "Welcome to InSchool.me",
+              text: `Hello! You have been invited to InSchool.me by ${parentName}. Click here to join: ${inviteLink}`,
+              html: `<p>Hello!</p><p>You have been invited to InSchool.me by <strong>${parentName}</strong>.</p><p>Click <a href="${inviteLink}">here</a> to sign up and join the chat.</p>`,
+            }),
+          });
+
+          const resText = await res.text();
+
+          if (!res.ok) {
+            console.error("Server response:", resText);
+            throw new Error("Failed to send invite");
+          }
+
+          let json;
+          try {
+            json = JSON.parse(resText);
+          } catch (e) {
+            console.error("Could not parse JSON:", resText);
+            throw new Error("Bad server response");
+          }
+        }
+
+        setMsg("Invites sent successfully!", false);
+        setTimeout(() => {
+          window.location.href = "parent_dashboard.html";
+        }, 2000);
+      } catch (error) {
+        setMsg(`Error: ${error.message}`);
+        $("shareBtn").disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
