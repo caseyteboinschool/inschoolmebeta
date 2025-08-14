@@ -151,9 +151,8 @@
             createdAt: serverTimestamp()
           });
 
-          const signupPage = recipient.role === 'student' ? 'student_signup.html' : 'parent_signup.html';
-
-          const inviteLink = `https://app.inschool.me/${signupPage}?invite=${inviteToken}`;
+          const invitePage = recipient.role === 'student' ? 'student_login.html' : 'parent_signup.html';
+          const inviteLink = `https://app.inschool.me/${invitePage}?invite=${inviteToken}`;
 
           const res = await fetch("/.netlify/functions/send-email", {
             method: "POST",
@@ -173,9 +172,8 @@
             throw new Error("Failed to send invite");
           }
 
-          let json;
           try {
-            json = JSON.parse(resText);
+            JSON.parse(resText); // just to catch malformed responses
           } catch (e) {
             console.error("Could not parse JSON:", resText);
             throw new Error("Bad server response");

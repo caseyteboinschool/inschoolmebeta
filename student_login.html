@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Login | InSchool.me</title>
+  <style>
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f5f8fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    #login-box {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #ccc;
+      width: 100%;
+      max-width: 400px;
+    }
+    label { font-weight: bold; display: block; margin-top: 1rem; }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-top: 0.2rem;
+    }
+    button {
+      margin-top: 1.5rem;
+      padding: 0.6rem 1.2rem;
+      width: 100%;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #msg {
+      min-height: 1.2em;
+      margin-top: 0.5rem;
+      font-weight: 600;
+      text-align: center;
+      color: #b71c1c;
+    }
+  </style>
+</head>
+<body>
+  <img src="student-top-logo.png" alt="Student Dashboard Logo" width="316" height="80" id="topLogo" />
+  <div id="login-box">
+    <h2>Student Login</h2>
+    <label for="studentEmail">Email</label>
+    <input id="studentEmail" type="email" placeholder="Your email" autocomplete="email" />
+
+    <label for="studentPassword">Password</label>
+    <input id="studentPassword" type="password" placeholder="Password" autocomplete="current-password" />
+
+    <button id="loginBtn">Login</button>
+    <p id="msg" aria-live="polite"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      updateDoc,
+      arrayUnion,
+      serverTimestamp,
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
+      authDomain: "inschoolme-beta.firebaseapp.com",
+      projectId: "inschoolme-beta",
+      storageBucket: "inschoolme-beta.firebasestorage.app",
+      messagingSenderId: "806780250780",
+      appId: "1:806780250780:web:595e81b83c1877d7741b59",
+      measurementId: "G-Y9RGFDV68H",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+    const setMsg = (msg, isError = true) => {
+      const el = $("msg");
+      el.textContent = msg || "";
+      el.style.color = isError ? "#b71c1c" : "green";
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteToken = urlParams.get("invite");
+
+    let inviteData = null;
+
+    if (!inviteToken) {
+      setMsg("Missing invite link.");
+      $("loginBtn").disabled = true;
+    } else {
+      // Load invite info on page load
+      (async () => {
+        try {
+          const inviteRef = doc(db, "invites", inviteToken);
+          const inviteSnap = await getDoc(inviteRef);
+
+          if (!inviteSnap.exists()) {
+            setMsg("Invalid or expired invite.");
+            $("loginBtn").disabled = true;
+            return;
+          }
+
+          inviteData = inviteSnap.data();
+
+          const roomRef = doc(db, "chatRooms", inviteData.roomCode);
+          const roomSnap = await getDoc(roomRef);
+
+          if (!roomSnap.exists()) {
+            setMsg("Chat room not found.");
+            $("loginBtn").disabled = true;
+            return;
+          }
+
+          const parentUid = roomSnap.data().createdBy;
+          const parentRef = doc(db, "users", parentUid);
+          const parentSnap = await getDoc(parentRef);
+
+          let parentName = "the person who invited you";
+          if (parentSnap.exists()) {
+            parentName = parentSnap.data().name || parentName;
+          }
+
+          setMsg(`You've been invited to join a chat started by ${parentName}. Please log in to continue.`, false);
+        } catch (err) {
+          console.error("Error loading invite info:", err);
+          setMsg("Something went wrong loading the invite.");
+          $("loginBtn").disabled = true;
+        }
+      })();
+    }
+
+    $("loginBtn").addEventListener("click", async () => {
+      const email = $("studentEmail").value.trim();
+      const password = $("studentPassword").value;
+
+      if (!email || !password) {
+        setMsg("Please enter your email and password.");
+        return;
+      }
+
+      if (!inviteData) {
+        setMsg("Invite data missing or invalid.");
+        return;
+      }
+
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const uid = cred.user.uid;
+
+        if (inviteData.invitedEmail !== email) {
+          setMsg("This invite was not sent to your email.");
+          return;
+        }
+
+        if (inviteData.status !== "pending") {
+          setMsg("This invite has already been used.");
+          return;
+        }
+
+        const roomRef = doc(db, "chatRooms", inviteData.roomCode);
+        await updateDoc(roomRef, {
+          members: arrayUnion(uid),
+        });
+
+        const inviteRef = doc(db, "invites", inviteToken);
+        await updateDoc(inviteRef, {
+          status: "accepted",
+          acceptedAt: serverTimestamp(),
+        });
+
+        setMsg("Login successful! Redirecting...", false);
+        setTimeout(() => {
+          window.location.href = "student_dashboard.html";
+        }, 1500);
+      } catch (error) {
+        setMsg(`Error: ${error.message}`);
+      }
+    });
+  </script>
+</body>
+</html>

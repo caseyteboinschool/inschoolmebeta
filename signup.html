@@ -141,6 +141,9 @@
         const userCredential = await createUserWithEmailAndPassword(auth, parentEmail, parentPassword);
         const parentUid = userCredential.user.uid;
 
+        // ✅ Generate a 6-character uppercase room code
+        const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
         await setDoc(doc(db, "users", parentUid), {
           name: parentName,
           email: parentEmail,
@@ -148,17 +151,15 @@
           role: 'parent'
         });
 
-        await setDoc(doc(db, "chatRooms", parentUid), {
-          roomCode: parentUid,
+        await setDoc(doc(db, "chatRooms", roomCode), {
+          roomCode: roomCode,
           createdBy: parentUid,
           members: [parentUid],
           createdAt: serverTimestamp(),
         });
 
         localStorage.setItem('parentName', parentName);
-
-        // ✅ Go straight to share.html to invite family (magic links sent from there)
-        window.location.href = `share.html?roomCode=${parentUid}`;
+        window.location.href = `share.html?roomCode=${roomCode}`;
 
       } catch (error) {
         setMsg(`Error: ${error.message}`);
