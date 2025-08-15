@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Parent Signup - InSchool.me</title>
+  <style>
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f5f8fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    #signup-container {
+      width: 100%;
+      max-width: 450px;
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #ccc;
+      margin-top: 1rem;
+    }
+    label {
+      display: block;
+      margin: 0.5rem 0 0.2rem;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    #msg {
+      min-height: 1.2em;
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #b71c1c;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <img src="parent-top-logo.png" alt="InSchool Logo" width="362" height="92" />
+
+  <div id="signup-container">
+    <h2>Parent Signup</h2>
+    <label for="parentName">Your Name</label>
+    <input id="parentName" type="text" placeholder="Your full name" />
+
+    <label for="parentEmail">Email</label>
+    <input id="parentEmail" type="email" placeholder="Your email" />
+
+    <label for="parentPassword">Password</label>
+    <input id="parentPassword" type="password" placeholder="Password" />
+
+    <button id="signupBtn">Sign Up</button>
+    <p id="msg" aria-live="polite"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
+      authDomain: "inschoolme-beta.firebaseapp.com",
+      projectId: "inschoolme-beta",
+      storageBucket: "inschoolme-beta.firebasestorage.app",
+      messagingSenderId: "806780250780",
+      appId: "1:806780250780:web:595e81b83c1877d7741b59",
+      measurementId: "G-Y9RGFDV68H"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+    const setMsg = (msg,

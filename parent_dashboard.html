@@ -3,183 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Parent Dashboard | InSchool.me</title>
+  <title>Parent Dashboard - InSchool.me</title>
   <style>
     body, html {
-      margin: 0; padding: 0; height: 100vh;
+      margin: 0; padding: 0; height: 100%;
       font-family: Arial, sans-serif;
       background: #f5f8fa;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      box-sizing: border-box;
-      padding: 10px;
-      overflow: hidden;
     }
-    #container {
-      width: 100%;
+    #chat-container {
       max-width: 600px;
+      margin: auto;
       background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 0 8px #ccc;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      height: 90vh;
-      position: relative;
+      border: 1px solid #ccc;
     }
-    #topLogo {
-      display: block;
-      margin: 0 auto 1rem;
-      max-width: 90vw;
-      height: auto;
-    }
-    #welcome {
-      font-weight: bold;
-      margin-bottom: 1rem;
-      text-align: center;
-      font-size: 1.1rem;
-    }
-    #chatContainer {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      background: #fafafa;
-      overflow: hidden;
-      margin-bottom: 0.5rem;
-      position: relative;
-      height: 100%;
-    }
-    #chatMessages {
-      flex-grow: 1;
-      overflow-y: auto;
+    #roomInfo {
       padding: 0.5rem;
-      font-size: 1rem;
-      line-height: 1.3;
-      margin-bottom: 60px;
-    }
-    .message {
-      max-width: 70%;
-      margin-bottom: 0.5rem;
-      padding: 0.3rem 0.6rem;
-      border-radius: 15px;
-      word-wrap: break-word;
-      clear: both;
-    }
-    .message.self {
-      background-color: #3b82f6;
+      background: #3b82f6;
       color: white;
-      margin-left: auto;
-      border-bottom-right-radius: 3px;
+      text-align: center;
     }
-    .message.other {
-      background-color: #d1d5db;
-      color: black;
-      margin-right: auto;
-      border-bottom-left-radius: 3px;
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
     }
-    #inputContainer {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
+    #inputArea {
+      display: flex;
       padding: 0.5rem;
       border-top: 1px solid #ccc;
-      background: white;
-      display: flex;
-      align-items: center;
-      box-sizing: border-box;
-      border-bottom-left-radius: 6px;
-      border-bottom-right-radius: 6px;
-      box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
     }
     #messageInput {
-      flex-grow: 1;
+      flex: 1;
       padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-      outline: none;
-      margin-right: 0.5rem;
-      box-sizing: border-box;
     }
-    #sendBtn {
-      width: 70px;
-      border-radius: 20px;
-      background-color: #3b82f6;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    #sendBtn:disabled {
-      background-color: #a5b4fc;
-      cursor: not-allowed;
-    }
-    #sendStatus {
-      margin-top: 0.5rem;
-      font-weight: 600;
-      color: #b71c1c;
-      min-height: 1.2em;
-      text-align: center;
-    }
-    #sendStatus.error {
-      color: red;
-    }
-    #logoutBtn {
-      margin-top: 8px;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      background-color: #ef4444;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-      align-self: stretch;
-    }
-    #chatRoomIdDisplay {
-      margin-top: 8px;
-      font-size: 0.9rem;
-      color: #555;
-      text-align: center;
-      word-break: break-word;
+    button {
+      padding: 0.5rem 1rem;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <img id="topLogo" src="parent-top-logo.png" alt="Parent Dashboard Logo" />
-    <div id="welcome"></div>
-    <div id="chatContainer" hidden>
-      <div id="chatMessages"></div>
-      <div id="inputContainer">
-        <input id="messageInput" type="text" placeholder="Type a message" autocomplete="off" />
-        <button id="sendBtn" disabled>Send</button>
-      </div>
-      <p id="sendStatus" aria-live="polite"></p>
-      <div id="chatRoomIdDisplay"></div>
-      <button id="logoutBtn">Log Out</button>
+  <div id="chat-container">
+    <div id="roomInfo">Loading room...</div>
+    <div id="messages"></div>
+    <div id="inputArea">
+      <input id="messageInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import {
-      addDoc,
-      collection,
-      getFirestore,
-      onSnapshot,
-      orderBy,
-      query,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
@@ -188,126 +66,55 @@
       storageBucket: "inschoolme-beta.firebasestorage.app",
       messagingSenderId: "806780250780",
       appId: "1:806780250780:web:595e81b83c1877d7741b59",
-      measurementId: "G-Y9RGFDV68H",
+      measurementId: "G-Y9RGFDV68H"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const $ = (id) => document.getElementById(id);
-    const setBusy = (busy) => {
-      ["sendBtn", "logoutBtn"].forEach(id => {
-        const el = $(id);
-        if (el) el.disabled = busy;
-      });
-    };
+    let roomCode = new URLSearchParams(window.location.search).get("roomCode");
 
-    let currentChatRoomId = null;
-    let unsubscribeMessages = null;
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "parent_signup.html";
+        return;
+      }
 
-    // Step 3: Read roomCode from URL and store it
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get("roomCode");
-    if (roomCode) {
-      console.log("✅ Room code from URL:", roomCode);
-      localStorage.setItem("roomCode", roomCode);
-      document.title = `InSchool Chat | Room ${roomCode}`;
-    }
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        $("welcome").textContent = `Welcome, ${user.email}`;
-        const savedRoomCode = localStorage.getItem("roomCode");
-        if (savedRoomCode) {
-          openChatRoom(savedRoomCode);
-        } else {
-          $("chatMessages").innerHTML = "<p>No chat room found in URL or memory.</p>";
-        }
-      } else {
-        window.location.href = "signup.html";
+      // Always get parent's saved roomCode from Firestore (in case URL is wrong)
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      if (userSnap.exists()) {
+        roomCode = userSnap.data().roomCode;
+        document.getElementById("roomInfo").textContent = `Chat Room ID: ${roomCode}`;
+        initChat(roomCode, user.displayName || userSnap.data().name);
       }
     });
 
-    async function openChatRoom(chatRoomId) {
-      if (unsubscribeMessages) unsubscribeMessages();
-      currentChatRoomId = chatRoomId;
-      $("chatContainer").hidden = false;
-      $("chatRoomIdDisplay").textContent = `Chat Room ID: ${chatRoomId}`;
-      $("chatMessages").innerHTML = "<p>Loading messages...</p>";
-      $("sendStatus").textContent = "";
-      $("sendBtn").disabled = false;
+    function initChat(roomCode, senderName) {
+      const messagesRef = collection(db, "chatRooms", roomCode, "messages");
 
-      const messagesRef = collection(db, "chatRooms", chatRoomId, "messages");
-      const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
-
-      unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
-        if (snapshot.empty) {
-          $("chatMessages").innerHTML = "<p>No messages yet.</p>";
-          return;
-        }
-        $("chatMessages").innerHTML = "";
+      onSnapshot(messagesRef, (snapshot) => {
+        const messagesDiv = document.getElementById("messages");
+        messagesDiv.innerHTML = "";
         snapshot.forEach((doc) => {
           const msg = doc.data();
-          const isSelf = auth.currentUser.uid === msg.senderId;
           const div = document.createElement("div");
-          div.textContent = msg.text;
-          div.className = "message " + (isSelf ? "self" : "other");
-          $("chatMessages").appendChild(div);
+          div.textContent = `${msg.sender}: ${msg.text}`;
+          messagesDiv.appendChild(div);
         });
-        $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
-      }, (error) => {
-        console.error("Error loading messages:", error);
-        $("chatMessages").innerHTML = "<p style='color:red'>Error loading messages.</p>";
+      });
+
+      document.getElementById("sendBtn").addEventListener("click", async () => {
+        const text = document.getElementById("messageInput").value.trim();
+        if (!text) return;
+        await addDoc(messagesRef, {
+          sender: senderName,
+          text,
+          createdAt: serverTimestamp()
+        });
+        document.getElementById("messageInput").value = "";
       });
     }
-
-    async function sendMessage() {
-      const text = $("messageInput").value.trim();
-      if (!text) {
-        $("sendStatus").textContent = "Please type a message first.";
-        $("sendStatus").classList.add("error");
-        return;
-      }
-      if (!currentChatRoomId) {
-        $("sendStatus").textContent = "No chat room selected.";
-        $("sendStatus").classList.add("error");
-        return;
-      }
-      setBusy(true);
-      $("sendStatus").textContent = "Sending…";
-      $("sendStatus").classList.remove("error");
-      try {
-        await addDoc(collection(db, "chatRooms", currentChatRoomId, "messages"), {
-          text,
-          senderId: auth.currentUser.uid,
-          timestamp: serverTimestamp(),
-        });
-        $("sendStatus").textContent = "✅ Message sent!";
-        $("messageInput").value = "";
-      } catch (e) {
-        $("sendStatus").textContent = "❌ " + e.message;
-        $("sendStatus").classList.add("error");
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    $("sendBtn").addEventListener("click", sendMessage);
-    $("messageInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-    $("logoutBtn").addEventListener("click", async () => {
-      setBusy(true);
-      try {
-        await signOut(auth);
-      } finally {
-        setBusy(false);
-      }
-    });
   </script>
 </body>
 </html>

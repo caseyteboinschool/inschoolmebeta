@@ -80,7 +80,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
@@ -104,43 +104,59 @@
     };
 
     const urlParams = new URLSearchParams(window.location.search);
-    const inviteCode = urlParams.get("invite");
-    let roomCode = null;
+    const inviteId = urlParams.get("invite");
+    const roomId = urlParams.get("roomId");
 
     async function validateInvite() {
-      if (!inviteCode) {
-        $("invitationMsg").textContent = "Missing invite code.";
+      if (!inviteId || !roomId) {
+        $("invitationMsg").textContent = "Missing invite or room ID.";
         $("signupBtn").disabled = true;
-        return;
+        return false;
       }
 
       try {
-        const inviteRef = doc(db, "invites", inviteCode);
+        const inviteRef = doc(db, "invites", inviteId);
         const inviteSnap = await getDoc(inviteRef);
 
         if (!inviteSnap.exists()) {
           $("invitationMsg").textContent = "Invalid or expired invite link.";
           $("signupBtn").disabled = true;
-          return;
+          return false;
         }
 
         const invite = inviteSnap.data();
-        roomCode = invite.roomCode;
+        if (invite.roomId !== roomId || invite.status !== "pending") {
+          $("invitationMsg").textContent = "Invalid invite or room mismatch.";
+          $("signupBtn").disabled = true;
+          return false;
+        }
 
-        const chatSnap = await getDoc(doc(db, "chatRooms", roomCode));
-        const chat = chatSnap.exists() ? chatSnap.data() : null;
-        const parentName = chat?.createdByName || "someone who cares about you";
+        const chatSnap = await getDoc(doc(db, "chatRooms", roomId));
+        if (!chatSnap.exists()) {
+          $("invitationMsg").textContent = "Chat room not found.";
+          $("signupBtn").disabled = true;
+          return false;
+        }
 
+        const chat = chatSnap.data();
+        const parentName = chat.createdByName || "someone who cares about you";
         $("invitationMsg").textContent = `You're joining a chat started by ${parentName}.`;
+        $("studentEmail").value = invite.invitedEmail || ""; // Prefill email
+        return true;
 
       } catch (err) {
-        console.error(err);
+        console.error("Invite validation error:", err);
         $("invitationMsg").textContent = "Error validating invite.";
         $("signupBtn").disabled = true;
+        return false;
       }
     }
 
-    validateInvite();
+    validateInvite().then(isValid => {
+      if (!isValid) {
+        $("signupBtn").disabled = true;
+      }
+    });
 
     $("signupBtn").addEventListener("click", async () => {
       const name = $("studentName").value.trim();
@@ -152,25 +168,44 @@
         return;
       }
 
+      // Re-validate invite and email
+      const inviteRef = doc(db, "invites", inviteId);
+      const inviteSnap = await getDoc(inviteRef);
+      if (!inviteSnap.exists() || inviteSnap.data().roomId !== roomId || inviteSnap.data().invitedEmail !== email) {
+        setMsg("Invalid invite or email mismatch.");
+        return;
+      }
+
       setMsg("Signing you up...", false);
       $("signupBtn").disabled = true;
 
       try {
+        // Create user
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         const uid = userCred.user.uid;
 
+        // Store user data
         await setDoc(doc(db, "users", uid), {
           name,
           email,
           role: "student",
+          chatRoomId: roomId,
           createdAt: serverTimestamp()
         });
 
-        await updateDoc(doc(db, "chatRooms", roomCode), {
-          members: arrayUnion(uid)
+        // Add student to chat room members (object structure)
+        await updateDoc(doc(db, "chatRooms", roomId), {
+          [`members.${uid}`]: { role: "student", name }
         });
 
-        window.location.href = `student_dashboard.html?roomCode=${roomCode}`;
+        // Update invite status
+        await updateDoc(inviteRef, {
+          status: "accepted",
+          acceptedAt: serverTimestamp()
+        });
+
+        setMsg("Signup successful!", false);
+        window.location.href = `student_dashboard.html?roomId=${roomId}`;
       } catch (err) {
         setMsg(`Error: ${err.message}`);
         $("signupBtn").disabled = false;

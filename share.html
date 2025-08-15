@@ -78,7 +78,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
@@ -101,21 +101,42 @@
       el.style.color = isError ? "#b71c1c" : "green";
     };
 
+    // Get roomId from URL (renamed to roomId for consistency with parent_signup.html)
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('roomCode');
-    if (!roomCode) {
-      setMsg("Invalid access. Please sign up first.");
-      $("shareBtn").disabled = true;
+    const roomId = urlParams.get('roomCode');
+
+    // Validate roomId exists in Firestore
+    async function validateRoomId(roomId) {
+      if (!roomId) {
+        setMsg("Error: No room ID found. Please return to signup.");
+        $("shareBtn").disabled = true;
+        return false;
+      }
+      const roomRef = doc(db, "chatRooms", roomId);
+      const roomSnap = await getDoc(roomRef);
+      if (!roomSnap.exists()) {
+        setMsg("Error: Invalid room ID. Please return to signup.");
+        $("shareBtn").disabled = true;
+        return false;
+      }
+      return true;
     }
 
-    const parentName = localStorage.getItem("parentName") || "A parent";
-
+    // Check auth state
     onAuthStateChanged(auth, (user) => {
       if (!user) {
         setMsg("You need to be logged in to share invites. Redirecting to login...");
         setTimeout(() => {
           window.location.href = "parent_login.html";
         }, 2000);
+        $("shareBtn").disabled = true;
+      } else {
+        // Validate roomId on load
+        validateRoomId(roomId).then(isValid => {
+          if (!isValid) {
+            $("shareBtn").disabled = true;
+          }
+        });
       }
     });
 
@@ -128,32 +149,43 @@
       const studentEmail = $("studentEmail").value.trim();
       const spouseEmail = $("spouseEmail").value.trim();
 
-      if (!studentEmail) {
-        setMsg("Please enter at least a student email.");
+      if (!studentEmail && !spouseEmail) {
+        setMsg("Please enter at least one email.");
+        return;
+      }
+
+      if (!(await validateRoomId(roomId))) {
         return;
       }
 
       setMsg("Sending invites...", false);
       $("shareBtn").disabled = true;
 
+      const parentName = localStorage.getItem("parentName") || "A parent";
+      const parentUid = auth.currentUser.uid;
       const recipients = [];
       if (studentEmail) recipients.push({ email: studentEmail, role: 'student' });
       if (spouseEmail) recipients.push({ email: spouseEmail, role: 'parent' });
 
+      let successCount = 0;
       try {
         for (const recipient of recipients) {
-          const inviteToken = crypto.randomUUID().slice(0, 8);
-
+          const inviteToken = crypto.randomUUID();
+          // Store invite with more context
           await setDoc(doc(db, "invites", inviteToken), {
-            roomCode,
+            roomId, // Changed to roomId for consistency
             invitedEmail: recipient.email,
+            inviterUid: parentUid,
+            inviterName: parentName,
+            role: recipient.role,
             status: 'pending',
             createdAt: serverTimestamp()
           });
 
           const invitePage = recipient.role === 'student' ? 'student_signup.html' : 'parent_signup.html';
-          const inviteLink = `https://app.inschool.me/${invitePage}?invite=${inviteToken}`;
+          const inviteLink = `https://app.inschool.me/${invitePage}?roomId=${roomId}&invite=${inviteToken}`;
 
+          // Send email via Netlify function
           const res = await fetch("/.netlify/functions/send-email", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -165,25 +197,19 @@
             }),
           });
 
-          const resText = await res.text();
-
           if (!res.ok) {
-            console.error("Server response:", resText);
-            throw new Error("Failed to send invite");
+            const resText = await res.text();
+            console.error("Email send error:", resText);
+            throw new Error(`Failed to send invite to ${recipient.email}`);
           }
-
-          try {
-            JSON.parse(resText); // just to catch malformed responses
-          } catch (e) {
-            console.error("Could not parse JSON:", resText);
-            throw new Error("Bad server response");
-          }
+          successCount++;
         }
 
-        setMsg("Invites sent successfully!", false);
+        setMsg(`Successfully sent ${successCount} invite${successCount > 1 ? 's' : ''}!`, false);
         setTimeout(() => {
-          window.location.href = "parent_dashboard.html";
+          window.location.href = `parent_dashboard.html?roomId=${roomId}`;
         }, 2000);
+
       } catch (error) {
         setMsg(`Error: ${error.message}`);
         $("shareBtn").disabled = false;
