@@ -84,7 +84,7 @@
       apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
       authDomain: "inschoolme-beta.firebaseapp.com",
       projectId: "inschoolme-beta",
-      storageBucket: "inschoolme-beta.firebasestorage.app",
+      storageBucket: "inschoolme-beta.appspot.com", // ✅ FIXED
       messagingSenderId: "806780250780",
       appId: "1:806780250780:web:595e81b83c1877d7741b59",
       measurementId: "G-Y9RGFDV68H"
@@ -117,11 +117,11 @@
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         const uid = userCred.user.uid;
 
-        // Create unique chat room using Firestore auto-generated ID
+        // Create unique chat room ID
         const roomRef = doc(db, "chatRooms", `${uid}_${Date.now()}`);
         const roomId = roomRef.id;
 
-        // Store user data
+        // Save user info
         await setDoc(doc(db, "users", uid), {
           name,
           email,
@@ -130,7 +130,7 @@
           createdAt: serverTimestamp()
         });
 
-        // Create chat room with parent as initial member
+        // Create chat room
         await setDoc(roomRef, {
           createdBy: uid,
           createdByName: name,
@@ -138,7 +138,9 @@
           createdAt: serverTimestamp()
         });
 
-        // Redirect to share with roomId
+        setMsg("Signup successful!", false);
+
+        // Redirect
         window.location.href = `share.html?roomId=${roomId}`;
       } catch (err) {
         setMsg(`Error: ${err.message}`);
