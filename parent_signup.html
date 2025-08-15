@@ -95,4 +95,55 @@
     const db = getFirestore(app);
 
     const $ = (id) => document.getElementById(id);
-    const setMsg = (msg,
+    const setMsg = (msg, isError = true) => {
+      $("msg").textContent = msg;
+      $("msg").style.color = isError ? "#b71c1c" : "green";
+    };
+
+    $("signupBtn").addEventListener("click", async () => {
+      const name = $("parentName").value.trim();
+      const email = $("parentEmail").value.trim();
+      const password = $("parentPassword").value;
+
+      if (!name || !email || !password) {
+        setMsg("All fields are required.");
+        return;
+      }
+
+      setMsg("Creating account...", false);
+
+      try {
+        // Create user
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = userCred.user.uid;
+
+        // Create unique chat room using Firestore auto-generated ID
+        const roomRef = doc(db, "chatRooms", `${uid}_${Date.now()}`);
+        const roomId = roomRef.id;
+
+        // Store user data
+        await setDoc(doc(db, "users", uid), {
+          name,
+          email,
+          role: "parent",
+          chatRoomId: roomId,
+          createdAt: serverTimestamp()
+        });
+
+        // Create chat room with parent as initial member
+        await setDoc(roomRef, {
+          createdBy: uid,
+          createdByName: name,
+          members: { [uid]: { role: "parent", name } },
+          createdAt: serverTimestamp()
+        });
+
+        // Redirect to share with roomId
+        window.location.href = `share.html?roomId=${roomId}`;
+      } catch (err) {
+        setMsg(`Error: ${err.message}`);
+      }
+    });
+  </script>
+</body>
+</html>
