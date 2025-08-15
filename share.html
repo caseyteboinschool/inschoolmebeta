@@ -183,7 +183,7 @@
           });
 
           const invitePage = recipient.role === 'student' ? 'student_signup.html' : 'parent_signup.html';
-          const inviteLink = `https://app.inschool.me/${invitePage}?roomId=${roomId}&invite=${inviteToken}`;
+          const inviteLink = `https://app.inschool.me/${invitePage}?roomCode=${roomId}&invite=${inviteToken}`;
 
           // Send email via Netlify function
           const res = await fetch("/.netlify/functions/send-email", {

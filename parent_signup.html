@@ -141,7 +141,7 @@
         setMsg("Signup successful!", false);
 
         // Redirect
-        window.location.href = `share.html?roomId=${roomId}`;
+        window.location.href = `share.html?roomCode=${roomId}`;
       } catch (err) {
         setMsg(`Error: ${err.message}`);
       }

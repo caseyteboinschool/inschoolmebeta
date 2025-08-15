@@ -105,7 +105,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const inviteId = urlParams.get("invite");
-    const roomId = urlParams.get("roomId");
+    const roomId = urlParams.get("roomCode");
 
     async function validateInvite() {
       if (!inviteId || !roomId) {
