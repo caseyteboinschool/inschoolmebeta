@@ -59,21 +59,24 @@
   </style>
 </head>
 <body>
-  <img src="parent-top-logo.png" alt="Parent Dashboard Logo" width="316" height="80" id="topLogo" />
-
+  <p>&nbsp;</p>
+  <p><img src="sharetop.png" width="400" height="266" alt=""/> </p>
   <div id="share-container">
-    <h2>You're Almost Ready!</h2>
-    <p>Enter the email addresses of your children or relatives you’d like to share this chat with!</p>
+    <h2>You're Almost Ready! <br>
+    Share it with your child/student!</h2>
+    <p>Enter the email address of your child you’d like to share this chat with!</p>
 
     <label for="studentEmail">Student Email</label>
     <input id="studentEmail" type="email" placeholder="Student's email" autocomplete="email" />
 
+    <!--
     <label for="spouseEmail">Spouse Email (optional)</label>
     <input id="spouseEmail" type="email" placeholder="Spouse's email" autocomplete="email" />
+    -->
 
     <button id="shareBtn">Share</button>
     <p id="msg" aria-live="polite"></p>
-  </div>
+</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -101,7 +104,7 @@
       el.style.color = isError ? "#b71c1c" : "green";
     };
 
-    // Get roomId from URL (renamed to roomId for consistency with parent_signup.html)
+    // Get roomId from URL
     const urlParams = new URLSearchParams(window.location.search);
     const roomId = urlParams.get('roomCode');
 
@@ -131,7 +134,6 @@
         }, 2000);
         $("shareBtn").disabled = true;
       } else {
-        // Validate roomId on load
         validateRoomId(roomId).then(isValid => {
           if (!isValid) {
             $("shareBtn").disabled = true;
@@ -147,10 +149,10 @@
       }
 
       const studentEmail = $("studentEmail").value.trim();
-      const spouseEmail = $("spouseEmail").value.trim();
+      // const spouseEmail = $("spouseEmail").value.trim();
 
-      if (!studentEmail && !spouseEmail) {
-        setMsg("Please enter at least one email.");
+      if (!studentEmail /* && !spouseEmail */) {
+        setMsg("Please enter a student email.");
         return;
       }
 
@@ -158,22 +160,21 @@
         return;
       }
 
-      setMsg("Sending invites...", false);
+      setMsg("Sending invite...", false);
       $("shareBtn").disabled = true;
 
       const parentName = localStorage.getItem("parentName") || "A parent";
       const parentUid = auth.currentUser.uid;
       const recipients = [];
       if (studentEmail) recipients.push({ email: studentEmail, role: 'student' });
-      if (spouseEmail) recipients.push({ email: spouseEmail, role: 'parent' });
+      // if (spouseEmail) recipients.push({ email: spouseEmail, role: 'parent' });
 
       let successCount = 0;
       try {
         for (const recipient of recipients) {
           const inviteToken = crypto.randomUUID();
-          // Store invite with more context
           await setDoc(doc(db, "invites", inviteToken), {
-            roomId, // Changed to roomId for consistency
+            roomId,
             invitedEmail: recipient.email,
             inviterUid: parentUid,
             inviterName: parentName,
@@ -185,7 +186,6 @@
           const invitePage = recipient.role === 'student' ? 'student_signup.html' : 'parent_signup.html';
           const inviteLink = `https://app.inschool.me/${invitePage}?roomCode=${roomId}&invite=${inviteToken}`;
 
-          // Send email via Netlify function
           const res = await fetch("/.netlify/functions/send-email", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
