@@ -141,7 +141,6 @@
         const userCredential = await createUserWithEmailAndPassword(auth, parentEmail, parentPassword);
         const parentUid = userCredential.user.uid;
 
-        // ✅ SAFE: Generate a consistent 6-character uppercase alphanumeric room code
         const generateRoomCode = () => {
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
           let code = '';
@@ -153,22 +152,24 @@
 
         const roomCode = generateRoomCode();
 
+        // Create user document
         await setDoc(doc(db, "users", parentUid), {
           name: parentName,
           email: parentEmail,
-          createdAt: serverTimestamp(),
-          role: 'parent'
+          role: "parent",
+          createdAt: serverTimestamp()
         });
 
+        // Create chat room with parent as first member
         await setDoc(doc(db, "chatRooms", roomCode), {
-          roomCode: roomCode,
+          roomCode,
           createdBy: parentUid,
           members: [parentUid],
-          createdAt: serverTimestamp(),
+          createdAt: serverTimestamp()
         });
 
-        localStorage.setItem('parentName', parentName);
-        window.location.href = `share.html?roomCode=${roomCode}`;
+        localStorage.setItem("parentName", parentName);
+        window.location.href = `parent_dashboard.html?roomCode=${roomCode}`;
 
       } catch (error) {
         setMsg(`Error: ${error.message}`);

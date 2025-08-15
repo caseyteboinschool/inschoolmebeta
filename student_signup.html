@@ -75,7 +75,7 @@
 
     <button id="signupBtn">Sign Up</button>
     <p id="msg" aria-live="polite"></p>
-</div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -115,17 +115,27 @@
       }
 
       try {
-        const inviteSnap = await getDoc(doc(db, "invites", inviteCode));
+        const inviteRef = doc(db, "invites", inviteCode);
+        const inviteSnap = await getDoc(inviteRef);
+
         if (!inviteSnap.exists()) {
           $("invitationMsg").textContent = "Invalid or expired invite link.";
           $("signupBtn").disabled = true;
-        } else {
-          const invite = inviteSnap.data();
-          roomCode = invite.roomCode;
-          $("invitationMsg").textContent = `You're joining a chat started by someone who cares about you.`;
+          return;
         }
+
+        const invite = inviteSnap.data();
+        roomCode = invite.roomCode;
+
+        const chatSnap = await getDoc(doc(db, "chatRooms", roomCode));
+        const chat = chatSnap.exists() ? chatSnap.data() : null;
+        const parentName = chat?.createdByName || "someone who cares about you";
+
+        $("invitationMsg").textContent = `You're joining a chat started by ${parentName}.`;
+
       } catch (err) {
-        setMsg("Error validating invite.");
+        console.error(err);
+        $("invitationMsg").textContent = "Error validating invite.";
         $("signupBtn").disabled = true;
       }
     }

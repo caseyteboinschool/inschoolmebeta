@@ -206,11 +206,10 @@
     const db = getFirestore(app);
 
     const $ = (id) => document.getElementById(id);
-
     const setBusy = (busy) => {
       ["sendBtn", "logoutBtn"].forEach(id => {
         const el = $(id);
-        if(el) el.disabled = busy;
+        if (el) el.disabled = busy;
       });
     };
 
@@ -224,9 +223,16 @@
       }
 
       $("welcome").textContent = `Welcome, ${user.email}`;
-      
+
+      // ✅ Get roomCode from URL or fallback to localStorage
+      let roomCode = localStorage.getItem("roomCode");
       const urlParams = new URLSearchParams(window.location.search);
-      const roomCode = urlParams.get('roomCode');
+      const urlRoomCode = urlParams.get("roomCode");
+
+      if (urlRoomCode) {
+        roomCode = urlRoomCode;
+        localStorage.setItem("roomCode", roomCode);
+      }
 
       if (roomCode) {
         try {
@@ -265,7 +271,6 @@
         });
 
         if (rooms.length > 0) {
-          displayChatRooms(rooms);
           openChatRoom(rooms[0].id);
         } else {
           $("chatRoomsList").innerHTML = "<p>You have no chat rooms yet.</p>";
@@ -277,15 +282,8 @@
       });
     }
 
-    function displayChatRooms(rooms) {
-      // hidden as requested
-    }
-
     async function openChatRoom(chatRoomId) {
-      if (unsubscribeMessages) {
-        unsubscribeMessages();
-      }
-
+      if (unsubscribeMessages) unsubscribeMessages();
       currentChatRoomId = chatRoomId;
       $("chatContainer").hidden = false;
       $("chatRoomIdDisplay").textContent = `Chat Room ID: ${chatRoomId}`;
@@ -360,6 +358,7 @@
       setBusy(true);
       try {
         await signOut(auth);
+        localStorage.removeItem("roomCode");
       } finally {
         setBusy(false);
       }

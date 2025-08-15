@@ -40,12 +40,6 @@
       text-align: center;
       font-size: 1.1rem;
     }
-    #chatRoomsList {
-      max-height: 120px;
-      overflow-y: auto;
-      margin-bottom: 1rem;
-      display: none;
-    }
     #chatContainer {
       flex-grow: 1;
       display: flex;
@@ -157,11 +151,7 @@
 <body>
   <div id="container">
     <img id="topLogo" src="parent-top-logo.png" alt="Parent Dashboard Logo" />
-
     <div id="welcome"></div>
-
-    <div id="chatRoomsList"><p>Loading chat rooms...</p></div>
-
     <div id="chatContainer" hidden>
       <div id="chatMessages"></div>
       <div id="inputContainer">
@@ -188,8 +178,7 @@
       onSnapshot,
       orderBy,
       query,
-      serverTimestamp,
-      where,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -207,47 +196,38 @@
     const db = getFirestore(app);
 
     const $ = (id) => document.getElementById(id);
-
     const setBusy = (busy) => {
       ["sendBtn", "logoutBtn"].forEach(id => {
         const el = $(id);
-        if(el) el.disabled = busy;
+        if (el) el.disabled = busy;
       });
     };
 
     let currentChatRoomId = null;
     let unsubscribeMessages = null;
 
+    // Step 3: Read roomCode from URL and store it
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get("roomCode");
+    if (roomCode) {
+      console.log("✅ Room code from URL:", roomCode);
+      localStorage.setItem("roomCode", roomCode);
+      document.title = `InSchool Chat | Room ${roomCode}`;
+    }
+
     onAuthStateChanged(auth, (user) => {
       if (user) {
         $("welcome").textContent = `Welcome, ${user.email}`;
-        loadUserChatRooms(user.uid);
+        const savedRoomCode = localStorage.getItem("roomCode");
+        if (savedRoomCode) {
+          openChatRoom(savedRoomCode);
+        } else {
+          $("chatMessages").innerHTML = "<p>No chat room found in URL or memory.</p>";
+        }
       } else {
-        window.location.href = "parent_signup.html";
+        window.location.href = "signup.html";
       }
     });
-
-    function loadUserChatRooms(uid) {
-      const chatRoomsRef = collection(db, "chatRooms");
-      const q = query(chatRoomsRef, where("participants", "array-contains", uid));
-
-      onSnapshot(q, (snapshot) => {
-        const rooms = [];
-        snapshot.forEach((doc) => {
-          rooms.push({ id: doc.id, ...doc.data() });
-        });
-
-        if (rooms.length > 0) {
-          openChatRoom(rooms[0].id); // auto open first
-        } else {
-          $("chatRoomsList").innerHTML = "<p>You have no chat rooms yet.</p>";
-          $("chatContainer").hidden = true;
-        }
-      }, (error) => {
-        console.error("Error loading chat rooms:", error);
-        $("chatRoomsList").innerHTML = "<p style='color:red'>Error loading chat rooms.</p>";
-      });
-    }
 
     async function openChatRoom(chatRoomId) {
       if (unsubscribeMessages) unsubscribeMessages();
