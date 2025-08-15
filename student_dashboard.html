@@ -139,6 +139,9 @@
     </div>
   </div>
 
+  <!-- 🔊 Notification sound -->
+  <audio id="messageSound" src="message-notification.mp3" preload="auto"></audio>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
@@ -197,10 +200,23 @@
           chatMessages.appendChild(div);
         });
         chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 🔊 Play sound for new incoming messages from others
+        if (!snapshot.metadata.hasPendingWrites) {
+          document.getElementById("messageSound").play().catch(() => {});
+        }
       });
 
       document.getElementById("sendBtn").disabled = false;
       document.getElementById("sendBtn").addEventListener("click", () => sendMessage(roomId, senderId, senderName));
+
+      // ⌨️ Send on Enter (Shift+Enter for newline)
+      document.getElementById("messageInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage(roomId, senderId, senderName);
+        }
+      });
     }
 
     async function sendMessage(roomId, senderId, senderName) {
