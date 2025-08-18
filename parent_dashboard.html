@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Parent Dashboard | InSchool.me</title>
+
+  <!-- PWA / icons -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2C6BED">
+  <link rel="apple-touch-icon" href="/icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
   <style>
     body, html {
       margin: 0; padding: 0; height: 100vh;
@@ -123,6 +131,39 @@
       text-align: center;
       word-break: break-word;
     }
+
+    /* --- Mobile scrolling + input bar fixes (added) --- */
+    html, body { height: 100%; overflow: auto; }
+    #container {
+      height: 100dvh;          /* dynamic viewport for iOS/Android */
+      max-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: static;        /* allow sticky child to work reliably */
+    }
+    #chatContainer {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #chatMessages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 72px;     /* space so last bubble isn’t behind input */
+      margin-bottom: 0;         /* remove old margin space */
+    }
+    #inputContainer {
+      position: sticky;         /* was absolute */
+      bottom: 0;
+      left: auto;               /* defaults are fine when sticky */
+      width: auto;
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+    }
+    body { overscroll-behavior-y: contain; }
   </style>
 </head>
 <body>
@@ -139,7 +180,7 @@
     </div>
   </div>
 
-  <!-- 🔊 Notification sound -->
+  <!-- Notification sound -->
   <audio id="messageSound" src="message-notification.mp3" preload="auto"></audio>
 
   <script type="module">
@@ -162,6 +203,7 @@
     const db = getFirestore(app);
 
     let currentRoomId = null;
+    let initialSnapshot = true; // to avoid playing sound on first render
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -199,28 +241,38 @@
           div.className = "message " + (msg.senderId === senderId ? "self" : "other");
           chatMessages.appendChild(div);
         });
+
+        // autoscroll to bottom on render/update
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // 🔊 Play sound for new incoming messages from others
-        if (!snapshot.metadata.hasPendingWrites) {
+        // play sound only for subsequent incoming updates (not initial load)
+        if (!initialSnapshot && !snapshot.metadata.hasPendingWrites) {
           document.getElementById("messageSound").play().catch(() => {});
         }
+        initialSnapshot = false;
       });
 
       document.getElementById("sendBtn").disabled = false;
       document.getElementById("sendBtn").addEventListener("click", () => sendMessage(roomId, senderId, senderName));
 
-      // ⌨️ Send on Enter (Shift+Enter for newline)
+      // Send on Enter (Shift+Enter for newline)
       document.getElementById("messageInput").addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
           sendMessage(roomId, senderId, senderName);
         }
       });
+
+      // keep bottom aligned when viewport changes (mobile keyboard show/hide)
+      window.addEventListener('resize', () => {
+        const el = document.getElementById("chatMessages");
+        if (el) el.scrollTop = el.scrollHeight;
+      });
     }
 
     async function sendMessage(roomId, senderId, senderName) {
-      const text = document.getElementById("messageInput").value.trim();
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
       if (!text) return;
 
       await addDoc(collection(db, "chatRooms", roomId, "messages"), {
@@ -230,7 +282,13 @@
         timestamp: serverTimestamp()
       });
 
-      document.getElementById("messageInput").value = "";
+      input.value = "";
+
+      // ensure view stays at bottom after send
+      setTimeout(() => {
+        const el = document.getElementById("chatMessages");
+        if (el) el.scrollTop = el.scrollHeight;
+      }, 50);
     }
   </script>
 </body>
