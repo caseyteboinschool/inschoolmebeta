@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>InSchool.me Chat Test</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      padding: 0; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      background: #f5f8fa; 
+    }
+    #header {
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      padding: 16px;
+      background: #fff;
+      border-bottom: 1px solid #ccc;
+    }
+    #topLogo {
+      width: 200px; /* adjust size if needed */
+      margin-bottom: 10px;
+    }
+    #sticky-note {
+      background: #fff8b3;
+      padding: 12px;
+      border: 1px solid #e6d96a;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 5px;
+    }
+    #chat-container {
+      width: 100%;
+      max-width: 500px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      height: 500px;
+    }
+    #chat {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .message {
+      margin: 6px 0;
+      padding: 10px;
+      border-radius: 6px;
+      max-width: 70%;
+      font-size: 14px;
+    }
+    .incoming {
+      background: #f1f1f1;
+      text-align: left;
+    }
+    .outgoing {
+      background: #d1e7ff;
+      text-align: right;
+      margin-left: auto;
+    }
+    #controls {
+      display: flex;
+      border-top: 1px solid #ccc;
+      padding: 8px;
+      background: #fff;
+    }
+    #msgInput {
+      flex: 1;
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      margin-left: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <img id="topLogo" src="student-top-logo.png" alt="Student Dashboard Logo" />
+    <div id="sticky-note">
+      📌 Reminder: Half day tomorrow!
+    </div>
+  </div>
+
+  <div id="chat-container">
+    <div id="chat"></div>
+    <div id="controls">
+      <input id="msgInput" type="text" placeholder="Type a message...">
+      <button onclick="sendMessage()">Send</button>
+      <button onclick="simulateIncoming()">Simulate</button>
+    </div>
+  </div>
+
+  <script>
+    function sendMessage() {
+      const chatBox = document.getElementById("chat");
+      const input = document.getElementById("msgInput");
+      if (!input.value.trim()) return;
+      const msg = document.createElement("div");
+      msg.className = "message outgoing";
+      msg.textContent = input.value;
+      chatBox.appendChild(msg);
+      input.value = "";
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function simulateIncoming() {
+      const chatBox = document.getElementById("chat");
+      const msg = document.createElement("div");
+      msg.className = "message incoming";
+      msg.textContent = "Hey, don’t forget your homework!";
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
