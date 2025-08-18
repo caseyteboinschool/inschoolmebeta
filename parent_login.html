@@ -88,7 +88,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBMwuU8rriKtIbT4TojoxuCc7uwdPav3YM",
@@ -110,14 +110,10 @@
     };
     const setBusy = (busy) => { $("loginBtn").disabled = busy; };
 
+    // ✅ Auto-redirect to dashboard if already logged in
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        if (user.emailVerified) {
-          window.location.href = "parent_dashboard.html"; // ✅ change to your actual dashboard
-        } else {
-          setMsg("Please verify your email before logging in.", "#b71c1c");
-          signOut(auth);
-        }
+        window.location.href = "parent_dashboard.html"; 
       }
     });
 
@@ -130,6 +126,7 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, pwd);
+        // redirect handled by onAuthStateChanged
       } catch (e) {
         const friendly = {
           "auth/invalid-email": "Invalid email address.",
