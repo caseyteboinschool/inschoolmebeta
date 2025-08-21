@@ -48,6 +48,15 @@
       font-size: 16px;
     }
 
+    /* tiny share icon styling */
+    #a2hs-body svg.share-icon {
+      width: 18px;
+      height: 18px;
+      vertical-align: -3px;
+      margin: 0 4px;
+      fill: #0b66ff;
+    }
+
     #a2hs-actions {
       display: flex;
       gap: 10px;
@@ -63,6 +72,7 @@
       font-weight: 600;
       font-size: 16px;
       touch-action: manipulation;
+      cursor: pointer;
     }
     .btn-primary {
       background: #0b66ff;
@@ -72,130 +82,4 @@
 
     /* iOS safe area so it never feels stuck near the home bar */
     @supports(padding: max(0px)) {
-      #a2hs-modal { 
-        margin-bottom: max(0px, env(safe-area-inset-bottom));
-        margin-top: max(0px, env(safe-area-inset-top));
-      }
-    }
-
-    /* Accessibility: reduce motion */
-    @media (prefers-reduced-motion: no-preference) {
-      #a2hs-backdrop.show { animation: fade .18s ease-out; }
-      #a2hs-modal.show { animation: pop .18s ease-out; }
-      @keyframes fade { from {opacity: 0} to {opacity: 1} }
-      @keyframes pop {
-        from {opacity: 0; transform: translate(-50%, -46%) scale(.98)}
-        to   {opacity: 1; transform: translate(-50%, -50%) scale(1)}
-      }
-    }
-
-    /* Optional: bottom-sheet style for very short viewports */
-    @media (max-height: 520px) {
-      #a2hs-modal {
-        inset: auto 0 0 0;
-        transform: none;
-        width: 100%;
-        border-radius: 16px 16px 0 0;
-      }
-    }
-
-    /* Hide platform-specific blocks by default; JS will toggle */
-    .platform { display: none; }
-  </style>
-</head>
-<body>
-
-<!-- Backdrop + Modal -->
-<div id="a2hs-backdrop"></div>
-<div id="a2hs-modal" role="dialog" aria-modal="true" aria-labelledby="a2hs-title">
-  <div id="a2hs-header"><span id="a2hs-title">Add to Home Screen!</span></div>
-  <div id="a2hs-body">
-    <div id="android-block" class="platform">
-      Add this to your Home Screen like an app!
-    </div>
-
-    <div id="ios-block" class="platform">
-      Add this to your Home Screen like an app!
-      <ol style="margin:8px 0 0 20px; padding:0;">
-        <li>Tap the <strong>Share</strong> icon in Safari.</li>
-        <li>Select <strong>Add to Home Screen</strong>.</li>
-      </ol>
-    </div>
-  </div>
-  <div id="a2hs-actions">
-    <button id="a2hs-ok" class="btn" type="button">Okay, thanks!</button>
-  </div>
-</div>
-
-<img src="logo.png" width="346" height="88" alt=""/>
-<script>
-  // Elements
-  const backdrop = document.getElementById('a2hs-backdrop');
-  const modal = document.getElementById('a2hs-modal');
-  const btnCancel = document.getElementById('a2hs-cancel');
-  const btnAccept = document.getElementById('a2hs-accept');
-  const androidBlock = document.getElementById('android-block');
-  const iosBlock = document.getElementById('ios-block');
-
-  // Detect platform & install state
-  const ua = navigator.userAgent.toLowerCase();
-  const isIos = /iphone|ipad|ipod/.test(ua);
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-  let deferredPrompt = null;
-
-  function showModal(which) {
-    // which: 'ios' | 'android'
-    androidBlock.style.display = which === 'android' ? 'block' : 'none';
-    iosBlock.style.display = which === 'ios' ? 'block' : 'none';
-
-    backdrop.style.display = 'block';
-    modal.style.display = 'block';
-
-    // trigger animations
-    backdrop.classList.add('show');
-    modal.classList.add('show');
-  }
-
-  function hideModal() {
-    backdrop.style.display = 'none';
-    modal.style.display = 'none';
-    backdrop.classList.remove('show');
-    modal.classList.remove('show');
-  }
-
-  // iOS: show instructions if not installed
-  if (isIos && !isStandalone) {
-    // Slight delay so it doesn't collide with Safari UI
-    setTimeout(() => showModal('ios'), 600);
-  }
-
-  // Android/Chrome: use beforeinstallprompt
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    showModal('android');
-  });
-
-  // Actions
-  btnCancel.addEventListener('click', hideModal);
-
-  btnAccept.addEventListener('click', async () => {
-    // Android: trigger native prompt
-    if (deferredPrompt) {
-      hideModal();
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      console.log('A2HS choice:', choice.outcome);
-      deferredPrompt = null;
-      return;
-    }
-    // iOS: just close (instructions already shown)
-    hideModal();
-  });
-
-  // Optional: dismiss if user taps outside the modal
-  backdrop.addEventListener('click', hideModal);
-</script>
-</body>
-</html>
+      #a2
